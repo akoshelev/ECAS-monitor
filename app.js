@@ -7,6 +7,7 @@ var moment = require('moment');
 var CHECK_INTERVAL_MIN = 120;
 var EMAIL_ALERT_ENABLED = 'no';
 var ALWAYS_ALERT_AFTER_START = 'no';
+var TAG_REMOVAL_REGEX = /<[^>]*>/g;
 
 // Build the post string from an object
 var post_data = {
@@ -42,7 +43,8 @@ var req_options_general = {
     followAllRedirects : true 
 };
 
-var numItems = 0;
+var numItems = 0,
+    lastStatus = "";
 
 process.on('uncaughtException', function (err) {
     log('An error was found, the program will end.');
@@ -151,9 +153,9 @@ function checkApplicationStatus() {
     request(req_options_general, function (error, response, body) {
         if (!error && response.statusCode === 200) {
             // get headers
-            var header = body.match(/<thead>[\w\W]*<\/thead>/)[0].match(/<th>(.+)<\/th>/g);
-            var applicantHeader = header[0].replace(/<(\/?)th>/g, '');
-            var statusHeader = header[1].replace(/<(\/?)th>/g, '');
+            var header = body.match(/<thead>[\w\W]*<\/thead>/)[0].match(/<th.*>(.+)<\/th>/g);
+            var applicantHeader = header[0].replace(TAG_REMOVAL_REGEX, '');
+            var statusHeader = header[1].replace(TAG_REMOVAL_REGEX, '');
             // get application info
             var info = body.match(/<tbody>[\w\W]*<\/tbody>/)[0].replace(/<\/?\w+>/g, '').match(/[^\t^\n]+/g);
             var firstName = info[1];
@@ -176,10 +178,11 @@ function checkApplicationStatus() {
                         numItems = items.length;
                         log('First time check without alert. There are [' + numItems + '] items.');
                     }
-                    if(items.length > numItems) {
+                    if(items.length > numItems || status !== lastStatus) {
                         // add number
                         numItems = items.length;
-                        log('Status changed to [' + numItems + '] items.');
+                        lastStatus = status;
+                        log('Status or items changed. Status become [' + lastStatus + '], items count [' + numItems + ']. ');
                         // send email notification
                         if(EMAIL_ALERT_ENABLED === 'yes') {
                             log('Now sending alert email.');

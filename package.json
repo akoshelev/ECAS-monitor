@@ -8,7 +8,7 @@
   },
   "dependencies": {
 	"request" : "*",
-    "nodemailer" : "",
+    "nodemailer" : "0.7.1",
     "moment" : "*"
   }
 }
